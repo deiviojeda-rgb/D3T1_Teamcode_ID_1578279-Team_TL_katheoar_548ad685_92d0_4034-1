@@ -1,4 +1,4 @@
-"""Состояние знаний по контракту v3. Бюджет и показанные ID хранит main."""
+"""Состояние знаний по контракту v5. Бюджет и показанные ID хранит main."""
 
 
 def start():
@@ -6,4 +6,4 @@ def start():
 
 
 def observe(state, question, result):
-    raise NotImplementedError('Обновите знания только по принятому ответу в шкале')
+    raise NotImplementedError('Обновите знания только по принятому ответу')

@@ -1,4 +1,5 @@
 """Реализуйте контракт из materials/protocol_rus.md. Модуль не печатает."""
+import answers
 
 
 def load(folder):
@@ -6,4 +7,4 @@ def load(folder):
 
 
 def check(question, answer):
-    raise NotImplementedError('Реализуйте проверку ответа')
+    return answers.check(question, answer)

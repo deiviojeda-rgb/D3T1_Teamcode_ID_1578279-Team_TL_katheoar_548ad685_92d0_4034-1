@@ -7,7 +7,7 @@ from pathlib import Path
 TOPICS = ('ввод', 'данные', 'ошибки', 'структура')
 TYPES = ('one', 'many', 'short', 'output')
 LABELS = ('А', 'Б', 'В', 'Г', 'Д')
-GROUPS = ('reference', 'review', 'team')
+GROUPS = ('reference', 'additional', 'team')
 
 def lines(path):
     if not path.exists():
@@ -43,10 +43,10 @@ def load(path):
     for group, ident, p, line in rows:
         try:
             assert ident is not None and ident > 0 and counts[ident] == 1
-            assert len(p) == 6
-            _, topic, level, kind, scale, text = p
-            assert topic in TOPICS and kind in TYPES and scale in ('0', '1') and text
-            assert (scale == '0' and level == '') or (scale == '1' and level in '12345' and len(level) == 1)
+            assert len(p) == 5
+            _, topic, level, kind, text = p
+            assert topic in TOPICS and kind in TYPES and text
+            assert level in ('1', '2', '3', '4', '5')
             opts = []
             for agroup, ap, _ in answers.get(ident, []):
                 assert agroup == group and len(ap) == 4 and ap[2] in ('0', '1') and ap[3]
@@ -65,8 +65,8 @@ def load(path):
                 code = (path / 'snippets' / f'{ident}.py').read_text(encoding='utf-8')
                 expected = (path / 'snippets' / f'{ident}.out').read_text(encoding='utf-8')
                 assert code.strip() and len(expected.splitlines()) == 1 and expected.strip()
-            good.append({'id': ident, 'topic': topic, 'level': int(level) if level else None,
-                         'type': kind, 'scale': int(scale), 'text': text, 'options': opts,
+            good.append({'id': ident, 'topic': topic, 'level': int(level),
+                         'type': kind, 'text': text, 'options': opts,
                          'code': code, 'expected': expected})
         except (AssertionError, OSError, UnicodeError, ValueError):
             errors.append({'id': ident, 'line': line})
@@ -119,8 +119,7 @@ def answer_for(q, correct):
 
 def scan(bank):
     qs = bank['questions']
-    out = [f'всего | {bank["total"]}', f'битых | {bank["broken"]}',
-           f'вне шкалы | {sum(q["scale"] == 0 for q in qs)}']
+    out = [f'всего | {bank["total"]}']
     out += [f'уровень {n} | {sum(q["level"] == n for q in qs)}' for n in range(1, 6)]
     out += [f'тема {t} | {sum(q["topic"] == t for q in qs)}' for t in TOPICS]
     out += [f'тип {t} | {sum(q["type"] == t for q in qs)}' for t in TYPES]
@@ -133,7 +132,7 @@ def bank_check(path, manifest_path):
     problems = []
     bank = load(path)
     if bank['broken']:
-        problems.append(f'Структурно битых вопросов: {bank["broken"]}')
+        problems.append(f'Вопросов с ошибками формата: {bank["broken"]}')
     ids = {ident for _, ident, _, _ in rows}
     for group, ident, p, line in rows:
         if group == 'team':
@@ -152,10 +151,10 @@ def bank_check(path, manifest_path):
         payload = {'question': line, 'answers': [a[2] for a in answers.get(ident, [])], 'snippets': snippets}
         digest = hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
         if digest != item['sha256']:
-            problems.append(f'Исходный вопрос {ident} изменён: разрешено только полное удаление из review')
+            problems.append(f'Готовый вопрос {ident} изменён: исходный банк нужно сохранить')
     for ident, item in manifest.items():
-        if item['group'] == 'reference' and int(ident) not in ids:
-            problems.append(f'Удалён эталонный вопрос {ident}')
+        if int(ident) not in ids:
+            problems.append(f'Удалён готовый вопрос {ident}')
         if int(ident) not in ids:
             for ext in ('py', 'out'):
                 if (path / 'snippets' / f'{ident}.{ext}').exists():
@@ -173,23 +172,23 @@ def bank_check(path, manifest_path):
         problems.append(f'Нужно 20 исправных вопросов команды; сейчас {len(team)}')
     if {q['type'] for q in team} != set(TYPES):
         problems.append('В банке команды должны встретиться четыре типа')
-    if sum(q['scale'] == 0 for q in team) != 2:
-        problems.append('В двадцать вопросов команды входят ровно два вне шкалы')
+    if {q['level'] for q in team} != set(range(1, 6)):
+        problems.append('В вопросах команды должны встретиться все пять уровней')
     return problems
 
 def fixture(path):
     path = Path(path); (path / 'snippets').mkdir(parents=True, exist_ok=True)
-    records = ['11 | ввод | 1 | one | 1 | Выберите число два.',
-               '12 | данные | 3 | many | 1 | Выберите чётные числа.',
-               '13 | ошибки | 2 | short | 1 | Назовите ValueError.',
-               '14 | структура | 4 | output | 1 | Что напечатает код?',
-               '15 | ввод |  | short | 0 | Скажите привет.']
+    records = ['11 | ввод | 1 | one | Выберите число два.',
+               '12 | данные | 3 | many | Выберите чётные числа.',
+               '13 | ошибки | 2 | short | Назовите ValueError.',
+               '14 | структура | 4 | output | Что напечатает код?',
+               '15 | ввод | 5 | short | Проверка text.isdigit() должна принимать любое целое, но отвергает отрицательные. Укажите одно целое от -1 до -3, которое она отвергнет.']
     answers = ['11 | А | 1 | 2', '11 | Б | 0 | 3',
                '12 | А | 1 | 2', '12 | Б | 1 | 4', '12 | В | 0 | 3',
-               '13 | - | 1 | ValueError', '15 | - | 1 | привет']
+               '13 | - | 1 | ValueError', '15 | - | 1 | -1', '15 | - | 1 | -2', '15 | - | 1 | -3']
     (path / 'bank_reference.txt').write_text('\n'.join(records)+'\n', encoding='utf-8')
     (path / 'answers_reference.txt').write_text('\n'.join(answers)+'\n', encoding='utf-8')
     (path / 'snippets/14.py').write_text('print(1, 2)\n', encoding='utf-8')
     (path / 'snippets/14.out').write_text('1 2\n', encoding='utf-8')
-    for name in ('bank_review', 'answers_review'):
+    for name in ('bank_additional', 'answers_additional', 'bank_team', 'answers_team'):
         (path / (name + '.txt')).write_text('', encoding='utf-8')

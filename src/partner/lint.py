@@ -21,7 +21,7 @@ def main():
                 issues.append(f'{path}:{number}: пробелы в конце строки')
             if len(line) > 120:
                 issues.append(f'{path}:{number}: строка длиннее 120 символов')
-        if path.name in ('bank.py', 'engine.py'):
+        if path.name in ('bank.py', 'answers.py', 'engine.py'):
             for node in ast.walk(tree):
                 if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == 'print':
                     issues.append(f'{path}:{node.lineno}: модуль не должен печатать')

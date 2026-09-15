@@ -129,7 +129,6 @@
 147 | Б | 0 | NameError
 147 | В | 0 | IndexError
 147 | Г | 1 | KeyError
-149 | - | 1 | дальше
-150 | - | 1 | python
-150 | - | 1 | питон
-150 | - | 1 | python 3
+149 | - | 1 | input
+149 | - | 1 | input()
+150 | - | 1 | return

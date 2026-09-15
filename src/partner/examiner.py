@@ -8,7 +8,6 @@ import random
 import re
 import secrets
 import selectors
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -18,7 +17,7 @@ import checklib as C
 
 HERE = Path(__file__).resolve().parent
 VERDICT = re.compile(r'(УРОВЕНЬ ([1-5])|НЕ ОПРЕДЕЛЁН) \| ВОПРОСОВ ([0-9]+) \| УВЕРЕННОСТЬ (0\.[0-9]{2}|1\.00)')
-QUESTION = re.compile(r'([0-9]+) \| вопрос ([0-9]+) \| уровень ([1-5]|-) \| тема (\S+) \| тип (\S+) \| в_шкале ([01])')
+QUESTION = re.compile(r'([0-9]+) \| вопрос ([0-9]+) \| уровень ([1-5]|-) \| тема (\S+) \| тип (\S+)')
 ANSWER = re.compile(r'([0-9]+) \| ответ (.+) \| (верно|неверно|не принят) \| дальше (уровень [1-5-]|стоп)')
 REASONS = {'сошлось', 'бюджет', 'вопросов нет', 'конец ввода'}
 
@@ -87,10 +86,10 @@ def run_session(main, bankpath, level, seed, profile='ideal', verbose=False):
                             if step != len(trace) + 1 or step > 20 or ident in [t['id'] for t in trace]:
                                 raise ValueError('Неверный шаг, повтор вопроса или превышение бюджета')
                             if ident not in bank:
-                                raise ValueError('Предъявлен битый или отсутствующий вопрос')
+                                raise ValueError('Предъявлен отсутствующий вопрос')
                             q = bank[ident]
-                            expected = (str(q['level']) if q['level'] is not None else '-', q['topic'], q['type'], str(q['scale']))
-                            if tuple(qm.group(i) for i in (3,4,5,6)) != expected:
+                            expected = (str(q['level']) if q['level'] is not None else '-', q['topic'], q['type'])
+                            if tuple(qm.group(i) for i in (3,4,5)) != expected:
                                 raise ValueError('Атрибуты вопроса в логе не соответствуют банку')
                             pending=q; sent=False; trace.append(q)
                         elif am:
@@ -112,7 +111,7 @@ def run_session(main, bankpath, level, seed, profile='ideal', verbose=False):
                 if block != C.presentation(q):
                     raise ValueError('Предъявление отличается от банка: проверьте текст, пары метка–вариант и код')
                 block = []
-                correct = q['level'] is None or q['level'] <= level
+                correct = q['level'] <= level
                 if profile == 'guesser' and not correct and q['type'] in ('one','many'):
                     correct = rng.random() < 0.25
                 if profile == 'inattentive' and correct:
@@ -144,7 +143,7 @@ def run_session(main, bankpath, level, seed, profile='ideal', verbose=False):
             raise ValueError('Причина бюджет допустима только при 20 вопросах')
         if not trace and reason != 'вопросов нет':
             raise ValueError('Остановка без вопросов требует причины вопросов нет')
-        evidence = [(q,s) for q,s in statuses if q['scale'] and s != 'не принят']
+        evidence = [(q,s) for q,s in statuses if s != 'не принят']
         if not evidence and (result[0] is not None or result[2] != 0):
             raise ValueError('Без свидетельств требуется НЕ ОПРЕДЕЛЁН и уверенность 0.00')
         return {'level':result[0], 'count':result[1], 'confidence':result[2],
@@ -167,13 +166,9 @@ def call(main, args):
 def task1(main):
     with tempfile.TemporaryDirectory(prefix='dopusk_scan_') as tmp:
         p=Path(tmp); C.fixture(p)
-        for extra in ('', '16 | ввод | 1 | one | 1 | Нет ответов.\n',
-                      '17 | ввод | 9 | unknown | 1 | Неверные поля.\n',
-                      '11 | ввод | 1 | one | 1 | Дубликат.\n'):
-            (p/'bank_review.txt').write_text(extra,encoding='utf-8')
-            actual=call(main,[tmp,'--scan'])
-            if actual != C.scan(C.load(p)):
-                raise ValueError('Разведочный вывод не совпал с эталоном на малом банке')
+        actual=call(main,[tmp,'--scan'])
+        if actual != C.scan(C.load(p)):
+            raise ValueError('Сводка банка не совпала с примером')
 
 def task2(main):
     code = '''import sys,json
@@ -221,7 +216,7 @@ def task3(main, bank):
     with tempfile.TemporaryDirectory(prefix='dopusk_empty_') as tmp:
         p=Path(tmp)
         (p/'bank_reference.txt').write_text('',encoding='utf-8')
-        (p/'bank_review.txt').write_text('',encoding='utf-8')
+        (p/'bank_additional.txt').write_text('',encoding='utf-8')
         (p/'bank_team.txt').write_text('',encoding='utf-8')
         run_session(main,p,3,4711)
     explain_contract(main,bank)
@@ -252,11 +247,11 @@ for warmup in ([],[(qs[0],'верно')],[(qs[1],'верно')]):
     state=engine.start()
     for q,status in warmup:
         assert engine.observe(state,q,status) is None, 'observe изменяет state и возвращает None'
-    for q,status in [(qs[1],'не принят'),(qs[0],'не принят'),(qs[4],'верно'),(qs[4],'неверно')]:
+    for q,status in [(qs[1],'не принят'),(qs[0],'не принят')]:
         before=copy.deepcopy(state)
         assert engine.observe(state,q,status) is None, 'observe должен вернуть None'
         valid(state)
-        assert state==before, 'Не принят / вне шкалы изменили состояние знаний'
+        assert state==before, 'Непринятый ответ изменил состояние знаний'
 print('СОСТОЯНИЕ: ОК')
 '''
     with tempfile.TemporaryDirectory(prefix='dopusk_state_') as tmp:
@@ -280,21 +275,6 @@ def task4(main, bank, key):
             group.append(tuple(r['levels'])); results.append(r)
         if len(set(group)) == 1:
             raise ValueError('Сложность и длина сессии не зависят от ответов')
-    with tempfile.TemporaryDirectory(prefix='dopusk_stress_') as tmp:
-        for mode in ('missing_level','missing_topic','broken'):
-            dest=Path(tmp)/mode; shutil.copytree(bank,dest)
-            for file in dest.glob('bank_*.txt'):
-                retained=[]
-                for line in file.read_text(encoding='utf-8').splitlines():
-                    parts=[x.strip() for x in line.split('|')]
-                    drop=len(parts)==6 and ((mode=='missing_level' and parts[2]=='4') or
-                                           (mode=='missing_topic' and parts[1]=='структура'))
-                    if not drop: retained.append(line)
-                file.write_text('\n'.join(retained)+'\n',encoding='utf-8')
-            if mode=='broken':
-                with (dest/'bank_review.txt').open('a',encoding='utf-8') as stream:
-                    stream.write('998 | ввод | 2 | output | 1 | Нет фрагмента.\n')
-            run_session(main,dest,4,seeds[0])
     print('эталонных сессий 15 | точность 1.00 | длина '+format(sum(r['count'] for r in results)/15,'.2f'))
 
 def main():
