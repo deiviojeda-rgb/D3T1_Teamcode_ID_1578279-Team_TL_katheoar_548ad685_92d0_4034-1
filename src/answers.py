@@ -24,10 +24,42 @@ def check_answer(question, raw):
                     (question["answer"], например "1,3"), каждый по одному разу,
                     и ничего лишнего; порядок и пробелы не важны;
                     "1,01" — это неверно;
-      "короткий"  — верно, если ответ совпадает с одной из форм
+      "короткий"  — верно, если ответ совпадает c одной из форм
                     (question["answer"], например "strip|strip()");
                     пробелы по краям и регистр не важны.
 
     Пока тело не написано, функция на всё отвечает "нет ответа".
     """
+    if question["type"] == "один":
+
+        choice = raw.strip()
+
+        if choice:
+            if choice == question["answer"]:
+                return "верно"
+            else:
+                return "неверно"
+        else:
+            return "нет ответа"
+
+    elif question["type"] == "несколько":
+        choice = [num.strip() for num in raw.split(",")]
+        answers = [num.strip() for num in question["answer"].split(",")]
+        if choice != [""]:
+            if sorted(choice) == sorted(answers):
+                return "верно"
+            else:
+                return "неверно"
+        else:
+            return "нет ответа"
+    elif question["type"] == "короткий":
+        answers = [variant.strip() for variant in question["answer"].split("|")]
+        ans = raw.strip().lower()
+        if ans:
+            if ans in answers:
+                return "верно"
+            else:
+                return "неверно"
+        else:
+            return "нет ответа"
     return "нет ответа"
