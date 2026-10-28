@@ -23,8 +23,6 @@ def next_level(level, result):
         return level + 1 
     elif result == "неверно" and level >1:
         return level - 1 
-    elif result == "нет ответа":
-        return level 
     return level
 
 

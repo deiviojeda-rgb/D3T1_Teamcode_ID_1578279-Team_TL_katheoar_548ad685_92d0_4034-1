@@ -30,6 +30,7 @@ def load_questions():
 
     Пока тело простейшее: только выданные вопросы.
     """
+    
     questions, _ = bank.load_bank(BANK)
     return questions
 
