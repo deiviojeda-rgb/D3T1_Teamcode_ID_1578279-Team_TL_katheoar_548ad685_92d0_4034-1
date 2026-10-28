@@ -19,6 +19,12 @@ def next_level(level, result):
 
     Пока тело не написано, уровень не меняется никогда.
     """
+    if result == "верно" and level < 5:
+        return level + 1 
+    elif result == "неверно" and level >1:
+        return level - 1 
+    elif result == "нет ответа":
+        return level 
     return level
 
 
@@ -34,8 +40,14 @@ def pick_question(questions, level, asked):
 
     Пока тело не написано, функция берёт первый незаданный вопрос,
     не глядя на уровень.
-    """
+    """ 
     for question in questions:
-        if question["id"] not in asked:
+        if question["id"] not in asked and question["level"] == level:
+            return question
+    for question in questions:
+        if question["id"] not in asked and question["level"] == level - 1:
+            return question
+    for question in questions:
+        if question["id"] not in asked and question["level"] == level + 1:
             return question
     return None
