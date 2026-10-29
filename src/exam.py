@@ -30,8 +30,9 @@ def load_questions():
 
     Пока тело простейшее: только выданные вопросы.
     """
-    questions = bank.load_bank(TEAM)
-    questions.append(bank.load_bank(BANK))
+    a, _= bank.load_bank(TEAM)
+    b, _= bank.load_bank(BANK)
+    questions=a + b
     return questions
 
 
@@ -54,16 +55,27 @@ def show_question(number, question):
 
     Пока тело простейшее: только текст и варианты.
     """
+    print( f"Вопрос {number} из 10")
     for line in bank.question_lines(question):
-        print( f"Вопрос {number} из 10")
         print(line)
-
+    if question["type"] == "несколько":
+        print("Введи номера всех верных вариантов через запятую.")
+    if question["type"] == "один":
+        print("Введи номер варианта.")
+    if question["type"] == "короткий":
+        print("Напиши ответ.")
 
 def show_result(result):
     """Показать результат ответа: «Верно.», «Неверно.» или «Нет ответа.».
 
     Пока тело простейшее: результат как есть.
     """
+    if result == "верно":
+        result = "Верно."
+    elif result == "неверно":
+        result = "Неверно."
+    elif result == "нет ответа":
+        result = "Нет ответа."
     print(result)
 
 
@@ -94,15 +106,15 @@ def final_lines(level, history):
 
     Пока тело простейшее: только первая строка.
     """
-    n = 0
-    i = len(history)-1
-    while i>0:
-        if history[i][1] == "верно":
-            n +=1
-        i-=1
-    if n > 0:
-        return [f"Итог: уровень {level}." , f"Почему: последний правильный ответ — на уровне {level}."]
-    return ["Итог: не определён.", "Почему: Ни одного правильного ответа"]
+    if level == None:
+        a = "Итог: не определён."
+        b = "Почему: ни одного правильного ответа."
+        return [a, b]
+    else:
+        a = f"Итог: уровень {level}."
+        b= f"Почему: последний правильный ответ — на уровне {level}."
+        return [a, b]
+
 
 
 def stable_level(history):
@@ -124,8 +136,12 @@ def save_result(name, level, asked, correct):
 
     Пока тело простейшее: ничего не записывается.
     """
-    return None
-
+    if not level:
+        write_file =f'{name};не определён;{asked};{correct}\n'
+    else:
+        write_file =f'{name};{level};{asked};{correct}\n'
+    with open(RESULTS, "a", encoding="utf-8") as target:
+        target.write(write_file)
 
 def main():
     try:
