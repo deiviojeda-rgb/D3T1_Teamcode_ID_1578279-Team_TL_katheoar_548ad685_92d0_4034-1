@@ -30,8 +30,8 @@ def load_questions():
 
     Пока тело простейшее: только выданные вопросы.
     """
-    
-    questions, _ = bank.load_bank(BANK)
+    questions = bank.load_bank(TEAM)
+    questions.append(bank.load_bank(BANK))
     return questions
 
 
@@ -43,7 +43,10 @@ def read_line():
 
     Пока тело простейшее: конец ввода не отличается от пустой строки.
     """
-    return sys.stdin.readline().rstrip("\n")
+    n =sys.stdin.readline()
+    if n=="":
+        return None
+    else: return n.rstrip("\n")
 
 
 def show_question(number, question):
@@ -52,6 +55,7 @@ def show_question(number, question):
     Пока тело простейшее: только текст и варианты.
     """
     for line in bank.question_lines(question):
+        print( f"Вопрос {number} из 10")
         print(line)
 
 
@@ -74,6 +78,12 @@ def final_level(history):
 
     Пока тело простейшее: всегда None.
     """
+    i = len(history)
+    while i>0:
+        i-=1
+        if history[i][1] == "верно":
+            return history[i][0]
+        
     return None
 
 
@@ -84,7 +94,15 @@ def final_lines(level, history):
 
     Пока тело простейшее: только первая строка.
     """
-    return ["Итог: не определён."]
+    n = 0
+    i = len(history)-1
+    while i>0:
+        if history[i][1] == "верно":
+            n +=1
+        i-=1
+    if n > 0:
+        return [f"Итог: уровень {level}." , f"Почему: последний правильный ответ — на уровне {level}."]
+    return ["Итог: не определён.", "Почему: Ни одного правильного ответа"]
 
 
 def stable_level(history):
