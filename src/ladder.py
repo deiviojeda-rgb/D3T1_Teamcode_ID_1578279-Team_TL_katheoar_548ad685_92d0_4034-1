@@ -7,6 +7,20 @@
 
 START_LEVEL = 1
 
+def is_perfect(history):
+    for lev, ans in hystory:
+        if ans  == "неверно":
+            return False
+    return True
+
+def next_level_own(level, result, history):
+    if result == "верно" and level < 4 and is_perfect(history):
+        return level + 2
+    elif result == "верно" and level < 5:
+        return level + 1
+    elif result == "неверно" and level >1:
+        return level - 1 
+    return level
 
 def next_level(level, result):
     """Уровень следующего вопроса.

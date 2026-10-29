@@ -192,6 +192,7 @@ def main():
     name = name.replace(";", " ").strip() or "без имени"
 
     stable = "--stable" in sys.argv
+    own = "--own" in sys.argv
     level = ladder.START_LEVEL
     asked = []
     history = []
@@ -206,7 +207,10 @@ def main():
         result = answers.check_answer(question, raw if raw is not None else "")
         show_result(result)
         history.append((question["level"], result))
-        level = ladder.next_level(question["level"], result)
+        if own:
+            level = ladder.next_level_own(question["level"], result, history)  
+        else: 
+            level = ladder.next_level(question["level"], result)
         if raw is None:
             break
 
