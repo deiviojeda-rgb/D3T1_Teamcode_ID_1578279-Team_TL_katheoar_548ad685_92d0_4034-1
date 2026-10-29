@@ -121,12 +121,46 @@ def stable_level(history):
     """Задание 6 (дополнительное). Самый высокий уровень, где у человека
     хотя бы два верных ответа, или None.
     """
-    return None
+    count = {}
+    max_level = 0
+    for level, answer in history:
+        if answer == 'верно':
+            count[level] = count.get(level, 0) +1
+    for key, value in count.items():
+        if value >= 2:
+            max_level = max(key, max_level)
+    return max_level if max_level else None
 
 
 def stable_lines(level, history):
     """Задание 6 (дополнительное). Строки итога для устойчивого правила."""
-    return ["Итог: не определён."]
+    if level == None:
+        return ["Итог: не определён.","Почему: ни одного правильного ответа."]
+    count = {}
+    for his_lev, answer in history:
+        if level == his_lev:
+            count[his_lev] = count.get(his_lev, 0) +1
+            if answer == 'верно':
+                count[str(his_lev) + "верно"] = count.get(str(his_lev) + "верно", 0) +1
+
+        elif level + 1 == his_lev:
+
+            count[his_lev] = count.get(his_lev, 0) +1
+
+            if answer == 'верно':
+                count[str(his_lev) + "верно"] = count.get(str(his_lev)+ "верно", 0) +1
+
+    c1 = count[str(level) + "верно"]
+
+    c2 = count.get(str(level+1 )+ "верно", 0)
+
+    c3 = count.get(level + 1, 0)
+    c4 = count[level]
+
+    part1 = f"Почему: уровень {level} — самый высокий, где у тебя 2 верных ответа ({c1} из {c4})."
+    part2 = f"На уровне {level + 1} верных ответов нет ({c2} из {c3})."
+    
+    return [f"Итог: уровень {level}.", part1 + part2]
 
 
 def save_result(name, level, asked, correct):
